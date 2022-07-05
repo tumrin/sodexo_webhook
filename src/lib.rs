@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
 use std::env;
+use std::fmt::Write;
 
 const DEFAULT_POST_TIME: &str = "07:00";
 
@@ -22,7 +23,8 @@ pub fn peanut_check(additional_diet_info: &Value) -> bool {
 pub fn build_message(sodexo_response: Value) -> String {
     let mut string = String::new();
     if let Some(Value::Object(lunch)) = sodexo_response.get("courses") {
-        string.push_str(&format!(
+        write!(
+            string,
             "**{} Lounas {}**",
             sodexo_response
                 .get("meta")
@@ -32,14 +34,16 @@ pub fn build_message(sodexo_response: Value) -> String {
                 .as_str()
                 .unwrap_or("Unknown restaurant"),
             chrono::Local::today().naive_local()
-        ));
+        )
+        .unwrap_or_else(|_| println!("Could not write to message string"));
         string.push_str("```\n");
 
         lunch.iter().for_each(|course| {
             if let Value::Object(food_item) = course.1 {
                 let peanuts =
                     peanut_check(food_item.get("additionalDietInfo").unwrap_or(&Value::Null));
-                string.push_str(&format!(
+                write!(
+                    string,
                     "{}: {} {} {}\n\n",
                     food_item
                         .get("title_fi")
@@ -56,8 +60,9 @@ pub fn build_message(sodexo_response: Value) -> String {
                         .unwrap_or(&Value::Null)
                         .as_str()
                         .unwrap_or(""),
-                    if peanuts { "🥜" } else { "" }
-                ))
+                    if peanuts { "🥜" } else { "" },
+                )
+                .unwrap_or_else(|_| println!("Could not write to message string"));
             }
         });
         string.push_str("```");
